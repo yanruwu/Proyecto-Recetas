@@ -4,14 +4,14 @@ from selenium import webdriver
 import urllib.parse
 from selenium.webdriver.common.by import By
 import pandas as pd
-from pytubefix.contrib.search import Search, Filter
+from pytubefix.contrib.search import Search
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 from bs4 import BeautifulSoup
 from time import sleep
 import numpy as np
-
+import os
 
 def obtener_links(receta):
     """Busca y devuelve el enlace de la receta más relevante en sitios específicos.
@@ -201,6 +201,27 @@ def convert_fractions(ingredient_list):
     return converted_ingredients
 
 def tasty_ing(link):
+    """Extrae información de ingredientes de una receta de Tasty.
+
+    Esta función realiza una solicitud a una página de receta de Tasty, 
+    extrae el título de la receta, la cantidad de porciones y la lista 
+    de ingredientes con sus cantidades y unidades.
+
+    Args:
+        link (str): URL de la receta en el sitio de Tasty.
+
+    Returns:
+        pd.DataFrame: DataFrame con columnas:
+            - 'title' (str): Título de la receta.
+            - 'servings' (int): Número de porciones.
+            - 'amount' (str): Cantidad del ingrediente (ej. "1/2").
+            - 'unit' (str): Unidad de medida (ej. "taza").
+            - 'ingredient' (str): Nombre del ingrediente.
+            
+    Raises:
+        requests.exceptions.RequestException: Si ocurre un error en la solicitud a la página.
+        AttributeError: Si no se encuentran los elementos esperados en el HTML de la receta.
+    """
     response = requests.get(url = link)
     soup = BeautifulSoup(response.content, 'html.parser')
     ingredient_col = soup.find('div', class_ = 'col md-col-4 xs-mx2 xs-pb3 md-mt0 xs-mt2')
@@ -211,15 +232,19 @@ def tasty_ing(link):
         parts = ingredient.decode_contents().split('<!-- -->')
         cleaned_parts = [part.strip() for part in parts]
         # print(convert_fractions(cleaned_parts)[0])
-        amount = re.search(pattern = r"\d+\s?\d?/?\d?", string = convert_fractions(cleaned_parts)[0]).group()
+        try:
+            amount = re.search(pattern = r"\d+\s?\d?/?\d?", string = convert_fractions(cleaned_parts)[0]).group()
+        except:
+            amount = ""
         try:
             unit = re.search(pattern=r"[A-Za-z]+", string = convert_fractions(cleaned_parts)[0]).group()
         except:
             unit = ""
         element = cleaned_parts[1].split(',')[0].strip().split('<')[0]
-        if element == '':
-            element = amount
-            amount = None
+        if amount == '':
+            element = cleaned_parts[0]
+            amount = 1
+            unit = 'serving'
         amounts_and_ing.append([amount, unit, element])
     # print(servings)
     df = pd.DataFrame(amounts_and_ing, columns=["amount", "unit", "ingredient"])
@@ -228,8 +253,30 @@ def tasty_ing(link):
     df.insert(loc = 0, column='servings', value=re.search(pattern = r"\d+", string = servings).group())
     df.insert(loc = 0, column='title', value=title.text)
     return df
+
     
 def allrecipes_ing(link):
+    """Extrae información de ingredientes de una receta en Allrecipes.
+
+    Abre la URL de la receta en un navegador usando Selenium, y luego 
+    extrae información sobre el título, número de porciones y lista de 
+    ingredientes con cantidades y unidades.
+
+    Args:
+        link (str): URL de la receta en el sitio de Allrecipes.
+
+    Returns:
+        pd.DataFrame: DataFrame con columnas:
+            - 'title' (str): Título de la receta.
+            - 'servings' (int): Número de porciones.
+            - 'amount' (str): Cantidad del ingrediente (ej. "1/2").
+            - 'unit' (str): Unidad de medida (ej. "taza").
+            - 'ingredient' (str): Nombre del ingrediente.
+            
+    Raises:
+        selenium.common.exceptions.WebDriverException: Si ocurre un error en la conexión o en el controlador.
+        AttributeError: Si no se encuentran los elementos esperados en el HTML de la receta.
+    """
     driver = webdriver.Chrome()
     driver.get(url = link)
     sleep(2)
@@ -245,7 +292,7 @@ def allrecipes_ing(link):
     ingredient_list = ingredient_ul.findAll('li')
     amounts_and_ing = []
     for ingredient in ingredient_list:
-        amount = ingredient.findAll('span')[0].text
+        amount = "".join(convert_fractions(ingredient.findAll('span')[0].text))
         unit = ingredient.findAll('span')[1].text
         element = ingredient.findAll('span')[2].text
         amounts_and_ing.append([amount, unit, element])
@@ -257,3 +304,140 @@ def allrecipes_ing(link):
     df.insert(loc = 0, column='servings', value=serving_size)
     df.insert(loc = 0, column='title', value=title.text)
     return df
+
+def edamam_query(df):
+    """Genera consultas de ingredientes para la API de Edamam.
+
+    Toma un DataFrame de ingredientes y genera una cadena de texto 
+    compatible con la API de Edamam, permitiendo consultar información 
+    nutricional de los ingredientes.
+
+    Args:
+        df (pd.DataFrame): DataFrame con información de ingredientes.
+
+    Returns:
+        list of str: Lista de consultas de ingredientes para la API, 
+            cada uno en formato adecuado para Edamam.
+            
+    Raises:
+        ValueError: Si el DataFrame no contiene los campos necesarios.
+    """
+    ingredientes_str = [" ".join(map(str, item)) for item in df.values]
+    return ingredientes_str
+
+def get_nutrients(ing_list, serving_size):
+    """Obtiene datos nutricionales de una lista de ingredientes usando la API de EDAMAM.
+
+    Esta función envía una lista de ingredientes a la API de EDAMAM para obtener información
+    nutricional detallada para cada ingrediente y ajusta los datos según el tamaño de porción.
+
+    Args:
+        ing_list (list): Lista de ingredientes en formato de texto.
+        serving_size (int): Tamaño de porción para ajustar los valores nutricionales.
+
+    Returns:
+        pd.DataFrame: DataFrame con los nutrientes de cada ingrediente, incluyendo:
+            - 'Ingredient' (str): Nombre del ingrediente.
+            - 'Weight (g)' (float): Peso en gramos del ingrediente ajustado al tamaño de porción.
+            - 'Calories (kcal)' (float): Calorías por porción.
+            - 'Protein (g)' (float): Proteína por porción.
+            - 'Fat (g)' (float): Grasas por porción.
+            - 'Carbohydrates (g)' (float): Carbohidratos por porción.
+            - 'Sugar (g)' (float): Azúcar por porción.
+            - 'Fiber (g)' (float): Fibra por porción.
+            - 'Serving weight (g)' (float): Peso total ajustado al tamaño de porción.
+
+    Raises:
+        HTTPError: Si hay un problema en la solicitud a la API de EDAMAM.
+    """
+    url = "https://api.edamam.com/api/nutrition-details"
+
+
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "ingr": ing_list
+        
+    }
+
+    response = requests.post(url, headers=headers, 
+            params={"app_id": os.getenv('edamam_session_id'), "app_key": os.getenv('edamam_api_key')}, json=data)
+
+    if response.status_code == 200:
+        nutrition_data = response.json()
+        nutrient_list = []
+        for ingredient in nutrition_data.get("ingredients", []):
+            try:
+                 ingredient.get("parsed")[0] # Para aquellos ingredientes que la api no reconoce
+            except:
+                continue
+            ingredient_name = ingredient.get("parsed")[0].get("foodMatch")
+            nutrients = ingredient.get("parsed")[0].get("nutrients")
+            weight = ingredient.get("parsed")[0].get("weight")
+            total_weight = nutrition_data.get("totalWeight")
+
+            calories = nutrients.get("ENERC_KCAL")["quantity"]
+            protein = nutrients.get("PROCNT")["quantity"]
+            fat = nutrients.get("FAT")["quantity"]
+            carbs = nutrients.get("CHOCDF")["quantity"]
+            fiber = nutrients.get("FIBTG")["quantity"]
+            try:
+                sugar = nutrients.get("SUGAR")["quantity"]
+            except:
+                sugar = 0
+           
+            nutrient_list.append({
+                "Ingredient": ingredient_name,
+                "Weight (g)" : weight/serving_size,
+                "Calories (kcal)": calories/serving_size,
+                "Protein (g)": protein/serving_size,
+                "Fat (g)": fat/serving_size,
+                "Carbohydrates (g)": carbs/serving_size,
+                "Sugar (g)" : sugar/serving_size,
+                "Fiber (g)" : fiber/serving_size,
+                "Serving weight (g)" : total_weight/serving_size
+            })
+        nutrients_df = pd.DataFrame(nutrient_list)
+        return nutrients_df
+
+    else:
+        print("Error:", response.status_code, response.json())
+        return None
+
+def calcular_puntuacion_salud_por_porcion(proteinas, carbohidratos, grasas, fibra, azucar, calorias):
+    """Calcula una puntuación de salud para una porción de receta basada en sus macronutrientes.
+
+    Esta función asigna pesos a cada macronutriente y aplica penalizaciones al azúcar y las calorías
+    para generar una puntuación de salud, donde una puntuación más alta indica una receta más saludable.
+
+    Args:
+        proteinas (float): Cantidad de proteínas en gramos por porción.
+        carbohidratos (float): Cantidad de carbohidratos en gramos por porción.
+        grasas (float): Cantidad de grasas en gramos por porción.
+        fibra (float): Cantidad de fibra en gramos por porción.
+        azucar (float): Cantidad de azúcar en gramos por porción.
+        calorias (float): Calorías por porción.
+
+    Returns:
+        float: Puntuación de salud calculada, donde una puntuación más alta indica un perfil más saludable.
+    """
+    # Pesos de cada macronutriente
+    peso_proteinas = 1.5
+    peso_carbohidratos = 1.0
+    peso_grasas = 0.8
+    peso_fibra = 1.2
+    penalizacion_azucar = 1.5
+    penalizacion_calorias = 1.0
+
+    # Puntuación de salud en función de la cantidad en un serving
+    puntuacion = (
+        peso_proteinas * proteinas
+        + peso_carbohidratos * carbohidratos
+        + peso_grasas * grasas
+        + peso_fibra * fibra
+        - penalizacion_azucar * azucar
+        - penalizacion_calorias * (calorias / 500) # Penalización ajustable sobre las calorías. Cuanto menos, mayor penalización
+    )
+    return puntuacion
