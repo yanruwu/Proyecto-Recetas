@@ -12,12 +12,15 @@ Este proyecto tiene como objetivo evaluar recetas culinarias en términos de su 
 │   ├── pasta.csv                           # Recetas extraídas de YT (pasta)
 │   ├── vegan.csv                           # Recetas extraídas de YT (vegano)
 │   ├── ingredientes_recetas_todas.csv      # Ingredientes de todas las recetas
+├── img/                                    # Carpeta con las imágenes de las gráficas
 ├── notebooks/                              # Notebooks Jupyter para EDA y análisis
-│   ├── main.ipynb                          # Notebook principal que contiene el flujo ETL completo
+│   ├── 1-ETL.ipynb                         # Notebook que contiene el flujo ETL completo
+│   ├── 2-EDA.ipynb                         # Notebook que contiene el EDA y las visualizaciones
 ├── src/                                    # Scripts de scraping, procesamiento y funciones
 │   ├── query_funcs.py                      # Funciones para ejecutar queries SQL desde Python
 │   ├── query_text.py                       # Texto de consultas SQL
 │   ├── funcs.py                            # Funciones generales para scrapeo y procesamiento
+├── environment.yml                         # Archivo de configuración para gestionar dependencias del entorno
 └── README.md                               # Documentación del proyecto
 ```
 ## Instalación y Requisitos ⚙️
@@ -27,6 +30,7 @@ Para configurar el entorno de desarrollo y asegurarte de que todas las dependenc
 ### Requisitos
 
 - Python 3.7 o superior 🐍
+- [Anaconda](https://www.anaconda.com/products/distribution) o [Miniconda](https://docs.conda.io/en/latest/miniconda.html) (opcional, pero recomendado)
 
 ### Paquetes Necesarios
 
@@ -51,6 +55,17 @@ El proyecto utiliza los siguientes paquetes:
    ```bash
    git clone https://github.com/yanruwu/Proyecto-Recetas
    cd Proyecto-Recetas
+2. **Crea un entorno virtual:**
+
+    Para crear el entorno de Conda, usa el siguiente comando:
+    ```bash
+    conda env create -f environment.yml
+    ```
+    O si prefieres usar venv:
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # En macOS/Linux
+    venv\Scripts\activate     # En Windows
 ## Progreso del Proyecto
 Este proyecto se enfoca en el desarrollo de un flujo ETL completo para analizar recetas, dividiéndose en las siguientes etapas:
 
@@ -101,3 +116,6 @@ Este proyecto se enfoca en el desarrollo de un flujo ETL completo para analizar 
 2. **Redes sociales**: Incluir otras fuentes de información con mayor impacto social, como podrían ser Instagram o Tiktok.
 3. **Ampliar muestra**: Incluir más resultados de más recetas, lo cual permitiría sacar más y mejores conclusiones.
 4. **Mejorar sistema de puntuación de salud**: Construir un sistema de puntuación más avanzado que considere otras macros y componentes de los ingredientes de cada receta.
+
+## 🤝 Contribuciones
+Las contribuciones son bienvenidas. Si deseas mejorar el proyecto, por favor abre un pull request o una issue.
