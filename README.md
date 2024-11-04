@@ -91,23 +91,23 @@ Este proyecto se enfoca en el desarrollo de un flujo ETL completo para analizar 
 
 1. **Distribución de Recetas por Tipo**: El análisis inicial reveló que las recetas más frecuentes son de tipo pasta y general, seguidas por pollo y recetas veganas, con un menor número de recetas chinas. Esta distribución nos ayuda a entender la relevancia y diversidad de las recetas en nuestro conjunto de datos, lo que influirá en los análisis posteriores.
 
-   ![Distribución de Recetas](img\distribucion_tipos.png)
+   ![Distribución de Recetas](img/distribucion_tipos.png)
 
 2. **Salud y Tipo de Receta 🥗**: Al analizar la puntuación de salud de las recetas según su tipo, se observó que las recetas de pollo presentan la menor dispersión en la escala de salud, lo que indica que, aunque no sean necesariamente las más saludables, tienden a ser más consistentes en su calidad nutricional. Las recetas de pasta, aunque pueden ser más saludables en algunos casos, tienen una mayor variabilidad. Las recetas generales mostraron la mayor dispersión, reflejando su diversidad inherente.
 
-   ![Salud y Tipo de Receta](img\salud_tipo.png)
+   ![Salud y Tipo de Receta](img/salud_tipo.png)
 
 3. **Viralidad y Puntuación de Salud 📈**: El análisis de la relación entre la puntuación de salud y el número de visualizaciones reveló una clara tendencia exponencial negativa en escala logarítmica: las recetas menos saludables tienden a ser las más vistas. Esto sugiere que el contenido menos saludable puede tener un mayor atractivo entre los usuarios. Además, se identificó que las recetas generales concentran la mayor cantidad de visualizaciones, corroborando el hallazgo anterior sobre su popularidad.
 
-   ![Viralidad y Salud](img\visitas_puntuacion.png)
+   ![Viralidad y Salud](img/visitas_puntuacion.png)
 
 4. **Tendencias de Visitas por Fecha 📅**: Al examinar las visitas en función de la fecha de publicación, se observaron picos de visualizaciones que inicialmente parecían indicar fechas de mayor viralidad. Sin embargo, estos picos estaban impulsados por las recetas generales, que tienen un volumen significativamente mayor de visitas. Al excluir estas recetas, se encontraron picos de interés a principios de año, pero se concluyó que la antigüedad de las recetas también juega un papel crucial en la acumulación de visualizaciones. El tamaño reducido del conjunto de datos sugiere que se necesita una muestra más amplia para realizar conclusiones más sólidas.
 
-   ![Tendencias de Visitas](img\visitas_fecha.png)
+   ![Tendencias de Visitas](img/visitas_fecha.png)
 
 5. **Ingredientes Populares 🍝**: El análisis de los ingredientes más comunes reflejó que aquellos asociados con la gastronomía italiana son predominantes, alineándose con la alta proporción de recetas de pasta en nuestro conjunto de datos. Esto indica un posible enfoque en la cocina italiana dentro de las recetas más populares, lo que podría influir en futuras recomendaciones y desarrollo de contenido.
 
-   ![Ingredientes Populares](img\ingrediente_conteo.png)
+   ![Ingredientes Populares](img/ingrediente_conteo.png)
 
 
 
